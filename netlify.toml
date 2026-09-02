@@ -1,0 +1,51 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Yahoo OAuth serverless proxy — maps the same /api/yahoo/* paths the React
+# app calls (see src/lib/yahooAuth.ts) onto Netlify Functions equivalents of
+# the Vercel functions in /api/yahoo/*.
+[[redirects]]
+  from = "/api/yahoo/callback"
+  to = "/.netlify/functions/yahoo-callback"
+  status = 200
+
+[[redirects]]
+  from = "/api/yahoo/token"
+  to = "/.netlify/functions/yahoo-token"
+  status = 200
+
+[[redirects]]
+  from = "/api/yahoo/settings"
+  to = "/.netlify/functions/yahoo-settings"
+  status = 200
+
+[[redirects]]
+  from = "/api/fantasypros"
+  to = "/.netlify/functions/fantasypros"
+  status = 200
+
+[[redirects]]
+  from = "/api/espn/news"
+  to = "/.netlify/functions/espn-news"
+  status = 200
+
+[[redirects]]
+  from = "/api/espn/roster"
+  to = "/.netlify/functions/espn-roster"
+  status = 200
+
+# Single-page app fallback — must come after the API redirects above.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

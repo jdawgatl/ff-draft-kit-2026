@@ -3,8 +3,8 @@ import { useDraftStore, selectCurrentPick } from '../store/draftStore';
 import { formatPick } from '../lib/format';
 
 /** Status/controls for tracking your REAL draft on the main Draft Board.
- * No AI opponents, no simulation — picks only ever come from the Chrome
- * extension's live sync or from clicking "Draft" on a player yourself. */
+ * No AI opponents, no simulation — picks only ever come from Yahoo login
+ * sync, the Chrome extension's live sync, or clicking "Draft" yourself. */
 export default function LiveDraftStatusPanel() {
   const currentPick = useDraftStore(selectCurrentPick);
   const teams = useDraftStore((s) => s.liveTeams);
@@ -12,6 +12,8 @@ export default function LiveDraftStatusPanel() {
   const picks = useDraftStore((s) => s.livePicks);
   const currentPickIndex = useDraftStore((s) => s.liveCurrentPickIndex);
   const syncConnected = useDraftStore((s) => s.syncConnected);
+  const yahooSyncEnabled = useDraftStore((s) => s.yahooSyncEnabled);
+  const yahooLeagueName = useDraftStore((s) => s.yahooLeagueName);
   const undoLastPick = useDraftStore((s) => s.liveUndoLastPick);
   const resetDraft = useDraftStore((s) => s.liveResetDraft);
   const allPlayers = useDraftStore((s) => s.allPlayers);
@@ -30,9 +32,11 @@ export default function LiveDraftStatusPanel() {
         Live Draft Tracker
       </div>
       <p className="mb-2.5 text-[10px] leading-snug text-slate-500">
-        {syncConnected
+        {yahooSyncEnabled
+          ? `Syncing live from your Yahoo login — "${yahooLeagueName}". Picks appear here automatically.`
+          : syncConnected
           ? "Auto-syncing with your Yahoo draft room via the Chrome extension — picks appear here as they happen."
-          : "Tracks your real draft. Connect the Chrome extension for auto-sync, or click \"Draft\" on a player as picks happen to log them yourself."}
+          : 'Tracks your real draft. Log into Yahoo in Settings for auto-sync (any device, no extension), connect the Chrome extension, or click "Draft" on a player yourself.'}
         {' '}Want to practice first?{' '}
         <span className="font-semibold text-emerald-400">Try the separate Mock Draft tab above.</span>
       </p>

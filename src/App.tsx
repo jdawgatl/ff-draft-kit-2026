@@ -13,6 +13,7 @@ import SettingsModal from './components/SettingsModal';
 import NewsFeedPanel from './components/NewsFeedPanel';
 import PlayerDetailDrawer from './components/PlayerDetailDrawer';
 import { useExtensionSync } from './hooks/useExtensionSync';
+import { useYahooDraftSync } from './hooks/useYahooDraftSync';
 import { useDraftStore, selectCurrentPick } from './store/draftStore';
 import { formatPick } from './lib/format';
 
@@ -20,6 +21,7 @@ type View = 'board' | 'mock' | 'roster' | 'handcuffs' | 'watchlist';
 
 export default function App() {
   useExtensionSync();
+  useYahooDraftSync();
   const [view, setView] = useState<View>('board');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);

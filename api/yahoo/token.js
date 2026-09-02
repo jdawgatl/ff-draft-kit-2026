@@ -1,6 +1,7 @@
 // Vercel serverless function: exchanges a Yahoo OAuth2 authorization code
-// for an access token. Holds YAHOO_CONSUMER_SECRET server-side only —
-// never expose it in the extension or web client bundle.
+// (or refreshes an existing token) for an access token. Holds
+// YAHOO_CONSUMER_SECRET server-side only — never expose it in the
+// extension or web client bundle.
 //
 // Required environment variables (set in Vercel Project Settings ->
 // Environment Variables, or `netlify env:set` if deploying to Netlify):
@@ -9,6 +10,10 @@
 //   YAHOO_REDIRECT_URI   (must exactly match the Callback URL registered
 //                          on developer.yahoo.com, e.g.
 //                          https://your-app.vercel.app/api/yahoo/callback)
+//
+// Handles both grant_type=authorization_code (first login) and
+// grant_type=refresh_token (keeping a live-draft sync session alive past
+// the ~1hr access token lifetime without re-prompting the user to log in).
 
 const TOKEN_URL = 'https://api.login.yahoo.com/oauth2/get_token';
 
@@ -18,7 +23,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { code } = req.body || {};
+  const { code, refreshToken } = req.body || {};
   const { YAHOO_CONSUMER_KEY, YAHOO_CONSUMER_SECRET, YAHOO_REDIRECT_URI } = process.env;
 
   if (!YAHOO_CONSUMER_KEY || !YAHOO_CONSUMER_SECRET) {
@@ -28,18 +33,17 @@ export default async function handler(req, res) {
     });
     return;
   }
-  if (!code) {
-    res.status(400).json({ error: 'Missing authorization code' });
+  if (!code && !refreshToken) {
+    res.status(400).json({ error: 'Missing authorization code or refresh token' });
     return;
   }
 
   try {
     const basicAuth = Buffer.from(`${YAHOO_CONSUMER_KEY}:${YAHOO_CONSUMER_SECRET}`).toString('base64');
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code',
-      redirect_uri: YAHOO_REDIRECT_URI || `${req.headers.origin}/api/yahoo/callback`,
-      code,
-    });
+    const redirectUri = YAHOO_REDIRECT_URI || `${req.headers.origin}/api/yahoo/callback`;
+    const body = refreshToken
+      ? new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken, redirect_uri: redirectUri })
+      : new URLSearchParams({ grant_type: 'authorization_code', redirect_uri: redirectUri, code });
 
     const tokenRes = await fetch(TOKEN_URL, {
       method: 'POST',
@@ -57,9 +61,11 @@ export default async function handler(req, res) {
     }
 
     const tokenJson = await tokenRes.json();
-    // In production, persist tokenJson.refresh_token server-side (e.g. an
-    // httpOnly cookie or KV store) rather than returning it to the client.
-    res.status(200).json({ access_token: tokenJson.access_token, expires_in: tokenJson.expires_in });
+    res.status(200).json({
+      access_token: tokenJson.access_token,
+      refresh_token: tokenJson.refresh_token,
+      expires_in: tokenJson.expires_in,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

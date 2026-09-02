@@ -109,3 +109,134 @@ export async function fetchLeagueSettingsViaProxy(code: string, leagueKey?: stri
   if (!res.ok) throw new Error(`Settings proxy responded ${res.status}`);
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Live draft sync via Yahoo login — lets you (or any of your league mates,
+// each on their own device/browser) log into your own Yahoo account and
+// have the app pull draft picks directly from Yahoo's Fantasy API, no
+// Chrome extension required. This covers a real Yahoo league you belong
+// to; Yahoo's public Mock Draft Lobby isn't exposed via their official API
+// (see netlify/functions/yahoo-draft-picks.js for why), so it isn't
+// covered by this path.
+
+const TOKENS_KEY = 'ffdk-yahoo-tokens';
+
+interface StoredYahooTokens {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt: number; // ms epoch
+}
+
+function getStoredTokens(): StoredYahooTokens | null {
+  try {
+    const raw = localStorage.getItem(TOKENS_KEY);
+    return raw ? (JSON.parse(raw) as StoredYahooTokens) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeTokens(tokens: StoredYahooTokens): void {
+  localStorage.setItem(TOKENS_KEY, JSON.stringify(tokens));
+}
+
+export function clearYahooTokens(): void {
+  localStorage.removeItem(TOKENS_KEY);
+}
+
+export function hasStoredYahooTokens(): boolean {
+  return getStoredTokens() !== null;
+}
+
+/** Exchanges an auth code for an access+refresh token pair and persists them locally. */
+export async function connectYahooAndStoreTokens(code: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch('/api/yahoo/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  const json = await res.json();
+  if (!res.ok) return { ok: false, error: json.error ?? `Token exchange responded ${res.status}` };
+  storeTokens({
+    accessToken: json.access_token,
+    refreshToken: json.refresh_token,
+    expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000 - 30_000, // 30s safety margin
+  });
+  return { ok: true };
+}
+
+/** Returns a valid access token, transparently refreshing it if it's expired
+ * or about to expire. Returns null if there's no stored session or refresh
+ * fails (e.g. the user revoked access) — callers should treat that as
+ * "not connected" rather than throwing. */
+export async function getValidYahooAccessToken(): Promise<string | null> {
+  const tokens = getStoredTokens();
+  if (!tokens) return null;
+  if (Date.now() < tokens.expiresAt) return tokens.accessToken;
+  if (!tokens.refreshToken) return null;
+
+  try {
+    const res = await fetch('/api/yahoo/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+    });
+    const json = await res.json();
+    if (!res.ok) return null;
+    storeTokens({
+      accessToken: json.access_token,
+      refreshToken: json.refresh_token ?? tokens.refreshToken,
+      expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000 - 30_000,
+    });
+    return json.access_token;
+  } catch {
+    return null;
+  }
+}
+
+export interface YahooLeagueSummary {
+  leagueKey: string;
+  name: string;
+  numTeams?: number;
+  draftStatus?: string;
+  myTeamKey?: string;
+  myTeamName?: string;
+}
+
+/** Lists the NFL leagues the connected Yahoo account belongs to this season. */
+export async function fetchMyYahooLeagues(accessToken: string): Promise<YahooLeagueSummary[]> {
+  const res = await fetch('/api/yahoo/leagues', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? `Leagues lookup responded ${res.status}`);
+  return json.leagues ?? [];
+}
+
+export interface YahooDraftPick {
+  pickNumber: number;
+  round: number;
+  teamKey: string;
+  playerKey: string;
+  playerName: string;
+  playerTeam: string | null;
+  playerPosition: string | null;
+}
+
+/** Pulls the current draft results for one league — safe to call repeatedly
+ * while a draft is in progress; returns whatever picks have happened so far. */
+export async function fetchYahooDraftPicks(
+  accessToken: string,
+  leagueKey: string
+): Promise<{ draftStatus: string; picks: YahooDraftPick[] }> {
+  const res = await fetch('/api/yahoo/draft-picks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken, leagueKey }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? `Draft picks lookup responded ${res.status}`);
+  return json;
+}

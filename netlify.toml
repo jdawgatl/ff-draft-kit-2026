@@ -25,6 +25,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/yahoo/leagues"
+  to = "/.netlify/functions/yahoo-leagues"
+  status = 200
+
+[[redirects]]
+  from = "/api/yahoo/draft-picks"
+  to = "/.netlify/functions/yahoo-draft-picks"
+  status = 200
+
+[[redirects]]
   from = "/api/fantasypros"
   to = "/.netlify/functions/fantasypros"
   status = 200

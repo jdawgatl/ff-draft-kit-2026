@@ -71,6 +71,10 @@ interface DraftStoreState {
   watchlist: string[];
   syncConnected: boolean;
   lastSyncedPickSignature: string | null;
+  /** Whether "Sync my live Yahoo draft" (login-based, no extension) is turned on. */
+  yahooSyncEnabled: boolean;
+  yahooLeagueKey: string | null;
+  yahooLeagueName: string | null;
   viewingPlayerId: string | null;
   viewingPlayerContext: 'live' | 'mock';
   /** Whether the user has explicitly confirmed their real draft slot (vs. the untouched default). */
@@ -117,6 +121,7 @@ interface DraftStoreState {
   mockResetDraft: () => void;
   toggleWatch: (playerId: string) => void;
   setSyncConnected: (v: boolean) => void;
+  setYahooSync: (enabled: boolean, leagueKey?: string | null, leagueName?: string | null) => void;
   mockSimStep: () => void; // advance exactly one mock pick (bot AI or, if user's turn, no-op unless forced)
   mockPickForMe: () => void;
   mockFastForwardToMyPick: () => void;
@@ -143,6 +148,9 @@ export const useDraftStore = create<DraftStoreState>()(
       watchlist: [],
       syncConnected: false,
       lastSyncedPickSignature: null,
+      yahooSyncEnabled: false,
+      yahooLeagueKey: null,
+      yahooLeagueName: null,
       viewingPlayerId: null,
       viewingPlayerContext: 'live',
       draftSlotConfirmed: false,
@@ -338,6 +346,12 @@ export const useDraftStore = create<DraftStoreState>()(
       },
 
       setSyncConnected: (v) => set({ syncConnected: v }),
+      setYahooSync: (enabled, leagueKey, leagueName) =>
+        set({
+          yahooSyncEnabled: enabled,
+          yahooLeagueKey: enabled ? leagueKey ?? get().yahooLeagueKey : null,
+          yahooLeagueName: enabled ? leagueName ?? get().yahooLeagueName : null,
+        }),
 
       mockSimStep: () => {
         const state = get();
@@ -429,6 +443,9 @@ export const useDraftStore = create<DraftStoreState>()(
         settings: state.settings,
         watchlist: state.watchlist,
         draftSlotConfirmed: state.draftSlotConfirmed,
+        yahooSyncEnabled: state.yahooSyncEnabled,
+        yahooLeagueKey: state.yahooLeagueKey,
+        yahooLeagueName: state.yahooLeagueName,
         liveTeams: state.liveTeams,
         livePicks: state.livePicks,
         liveCurrentPickIndex: state.liveCurrentPickIndex,

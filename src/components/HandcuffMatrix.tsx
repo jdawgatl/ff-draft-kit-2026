@@ -5,10 +5,10 @@ import { POSITION_COLORS } from '../lib/format';
 
 export default function HandcuffMatrix() {
   const allPlayers = useDraftStore((s) => s.allPlayers);
-  const draftedIds = useDraftStore((s) => s.draftedPlayerIds);
+  const draftedIds = useDraftStore((s) => s.liveDraftedPlayerIds);
   const watchlist = useDraftStore((s) => s.watchlist);
   const toggleWatch = useDraftStore((s) => s.toggleWatch);
-  const draftPlayer = useDraftStore((s) => s.draftPlayer);
+  const draftPlayer = useDraftStore((s) => s.liveDraftPlayer);
   const setViewingPlayer = useDraftStore((s) => s.setViewingPlayer);
   const draftedSet = useMemo(() => new Set(draftedIds), [draftedIds]);
 

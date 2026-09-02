@@ -6,25 +6,34 @@ import {
   selectCurrentPick,
   selectMyFuturePickNumbers,
   selectMyRoster,
+  selectMockAvailablePlayers,
+  selectMockCurrentPick,
+  selectMockMyFuturePickNumbers,
+  selectMockMyRoster,
 } from '../store/draftStore';
 import { topRecommendations } from '../lib/recommend';
 import { POSITION_COLORS } from '../lib/format';
 
-export default function RecommendationPanel() {
+interface Props {
+  mode?: 'live' | 'mock';
+}
+
+export default function RecommendationPanel({ mode = 'live' }: Props) {
+  const isMock = mode === 'mock';
   const allPlayers = useDraftStore((s) => s.allPlayers);
   const settings = useDraftStore((s) => s.settings);
-  const available = useDraftStore(useShallow(selectAvailablePlayers));
-  const currentPick = useDraftStore(selectCurrentPick);
-  const myRoster = useDraftStore(useShallow(selectMyRoster));
-  const futurePicks = useDraftStore(useShallow(selectMyFuturePickNumbers));
-  const draftPlayer = useDraftStore((s) => s.draftPlayer);
+  const available = useDraftStore(useShallow(isMock ? selectMockAvailablePlayers : selectAvailablePlayers));
+  const currentPick = useDraftStore(isMock ? selectMockCurrentPick : selectCurrentPick);
+  const myRoster = useDraftStore(useShallow(isMock ? selectMockMyRoster : selectMyRoster));
+  const futurePicks = useDraftStore(useShallow(isMock ? selectMockMyFuturePickNumbers : selectMyFuturePickNumbers));
+  const draftPlayer = useDraftStore((s) => (isMock ? s.mockDraftPlayer : s.liveDraftPlayer));
   const toggleWatch = useDraftStore((s) => s.toggleWatch);
   const watchlist = useDraftStore((s) => s.watchlist);
 
   if (!currentPick) {
     return (
       <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">
-        Draft complete — no picks remaining.
+        {isMock ? 'Mock draft complete — no picks remaining.' : 'No picks tracked yet.'}
       </div>
     );
   }

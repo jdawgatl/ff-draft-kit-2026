@@ -1,25 +1,27 @@
-import { Play, Pause, SkipForward, FastForward, Wand2, Undo2, RotateCcw } from 'lucide-react';
-import { useDraftStore, selectCurrentPick } from '../store/draftStore';
+import { Play, Pause, SkipForward, FastForward, Wand2, Undo2, RotateCcw, Gamepad2 } from 'lucide-react';
+import { useDraftStore, selectMockCurrentPick } from '../store/draftStore';
 import { formatPick } from '../lib/format';
 import { useSimLoop } from '../hooks/useSimLoop';
 
+/** Controls for the Mock Draft tool only — simulates a full draft against
+ * 11 AI-controlled opponents. Entirely separate from live draft tracking. */
 export default function DraftControlPanel() {
   useSimLoop();
 
-  const currentPick = useDraftStore(selectCurrentPick);
-  const teams = useDraftStore((s) => s.teams);
+  const currentPick = useDraftStore(selectMockCurrentPick);
+  const teams = useDraftStore((s) => s.mockTeams);
   const settingsTeams = useDraftStore((s) => s.settings.teams);
-  const picks = useDraftStore((s) => s.picks);
-  const currentPickIndex = useDraftStore((s) => s.currentPickIndex);
-  const simRunning = useDraftStore((s) => s.simRunning);
-  const simSpeed = useDraftStore((s) => s.simSpeed);
-  const setSimRunning = useDraftStore((s) => s.setSimRunning);
-  const setSimSpeed = useDraftStore((s) => s.setSimSpeed);
-  const simStep = useDraftStore((s) => s.simStep);
-  const pickForMe = useDraftStore((s) => s.pickForMe);
-  const fastForwardToMyPick = useDraftStore((s) => s.fastForwardToMyPick);
-  const undoLastPick = useDraftStore((s) => s.undoLastPick);
-  const resetDraft = useDraftStore((s) => s.resetDraft);
+  const picks = useDraftStore((s) => s.mockPicks);
+  const currentPickIndex = useDraftStore((s) => s.mockCurrentPickIndex);
+  const simRunning = useDraftStore((s) => s.mockSimRunning);
+  const simSpeed = useDraftStore((s) => s.mockSimSpeed);
+  const setSimRunning = useDraftStore((s) => s.setMockSimRunning);
+  const setSimSpeed = useDraftStore((s) => s.setMockSimSpeed);
+  const simStep = useDraftStore((s) => s.mockSimStep);
+  const pickForMe = useDraftStore((s) => s.mockPickForMe);
+  const fastForwardToMyPick = useDraftStore((s) => s.mockFastForwardToMyPick);
+  const undoLastPick = useDraftStore((s) => s.mockUndoLastPick);
+  const resetDraft = useDraftStore((s) => s.mockResetDraft);
   const allPlayers = useDraftStore((s) => s.allPlayers);
 
   const teamName = currentPick ? teams[currentPick.teamIndex]?.name : '—';
@@ -29,8 +31,18 @@ export default function DraftControlPanel() {
   const nameFor = (id: string | null) => (id ? allPlayers.find((p) => p.id === id)?.name ?? id : '');
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
-      <div className="mb-2 flex items-center justify-between">
+    <div className="rounded-lg border border-emerald-800/40 bg-slate-900/40 p-3">
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-emerald-300">
+        <Gamepad2 size={14} />
+        Mock Draft Controls
+      </div>
+      <p className="mb-2.5 text-[10px] leading-snug text-slate-500">
+        Simulate a full draft against 11 AI teams: step through picks one at a time, auto-run the
+        whole board, or jump straight to your next pick. Use <b>Pick For Me</b> to let the
+        recommendation engine draft on your behalf when it's your turn. This practice draft is
+        separate from your live draft tracking — nothing here affects it.
+      </p>
+      <div className="mb-2 flex items-center justify-between border-t border-slate-800 pt-2">
         <div>
           <div className="text-[10px] uppercase tracking-wide text-slate-500">
             {draftComplete ? 'Draft Complete' : `On the clock — ${teamName}`}
@@ -95,7 +107,7 @@ export default function DraftControlPanel() {
           <button onClick={undoLastPick} title="Undo last pick" className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200">
             <Undo2 size={14} />
           </button>
-          <button onClick={resetDraft} title="Reset draft" className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+          <button onClick={resetDraft} title="Reset mock draft" className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200">
             <RotateCcw size={14} />
           </button>
         </div>

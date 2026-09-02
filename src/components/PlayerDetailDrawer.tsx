@@ -3,7 +3,7 @@ import {
   X, Star, Flame, Newspaper, AlertTriangle, TrendingUp, Shield,
   Loader2, User,
 } from 'lucide-react';
-import { useDraftStore, selectCurrentPick } from '../store/draftStore';
+import { useDraftStore, selectCurrentPick, selectMockCurrentPick } from '../store/draftStore';
 import type { Player } from '../types';
 import { POSITION_COLORS, TIER_COLORS, formatPick, pct } from '../lib/format';
 import { survivalProbability } from '../lib/normal';
@@ -59,14 +59,16 @@ function initials(name: string): string {
 
 export default function PlayerDetailDrawer() {
   const viewingPlayerId = useDraftStore((s) => s.viewingPlayerId);
+  const viewingContext = useDraftStore((s) => s.viewingPlayerContext);
+  const isMock = viewingContext === 'mock';
   const setViewingPlayer = useDraftStore((s) => s.setViewingPlayer);
   const allPlayers = useDraftStore((s) => s.allPlayers);
-  const draftedIds = useDraftStore((s) => s.draftedPlayerIds);
+  const draftedIds = useDraftStore((s) => (isMock ? s.mockDraftedPlayerIds : s.liveDraftedPlayerIds));
   const watchlist = useDraftStore((s) => s.watchlist);
   const toggleWatch = useDraftStore((s) => s.toggleWatch);
-  const draftPlayer = useDraftStore((s) => s.draftPlayer);
+  const draftPlayer = useDraftStore((s) => (isMock ? s.mockDraftPlayer : s.liveDraftPlayer));
   const teams = useDraftStore((s) => s.settings.teams);
-  const currentPick = useDraftStore(selectCurrentPick);
+  const currentPick = useDraftStore(isMock ? selectMockCurrentPick : selectCurrentPick);
 
   const player = allPlayers.find((p) => p.id === viewingPlayerId) ?? null;
 
@@ -121,7 +123,9 @@ export default function PlayerDetailDrawer() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Player Detail</span>
+          <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            Player Detail{isMock && <span className="ml-1.5 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] text-emerald-300">Mock Draft</span>}
+          </span>
           <button onClick={() => setViewingPlayer(null)} aria-label="Close" className="text-slate-500 hover:text-slate-300">
             <X size={18} />
           </button>

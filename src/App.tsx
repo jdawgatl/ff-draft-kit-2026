@@ -4,7 +4,8 @@ import Header from './components/Header';
 import PlayerBoard from './components/PlayerBoard';
 import RecommendationPanel from './components/RecommendationPanel';
 import AvailabilityPanel from './components/AvailabilityPanel';
-import DraftControlPanel from './components/DraftControlPanel';
+import LiveDraftStatusPanel from './components/LiveDraftStatusPanel';
+import MockDraftView from './components/MockDraftView';
 import RosterTracker from './components/RosterTracker';
 import HandcuffMatrix from './components/HandcuffMatrix';
 import WatchlistView from './components/WatchlistView';
@@ -15,7 +16,7 @@ import { useExtensionSync } from './hooks/useExtensionSync';
 import { useDraftStore, selectCurrentPick } from './store/draftStore';
 import { formatPick } from './lib/format';
 
-type View = 'board' | 'roster' | 'handcuffs' | 'watchlist';
+type View = 'board' | 'mock' | 'roster' | 'handcuffs' | 'watchlist';
 
 export default function App() {
   useExtensionSync();
@@ -38,7 +39,7 @@ export default function App() {
 
             {/* Wide screens (standalone web app): persistent sidebar */}
             <aside className="hidden w-80 shrink-0 space-y-3 overflow-y-auto p-3 lg:block">
-              <DraftControlPanel />
+              <LiveDraftStatusPanel />
               <RecommendationPanel />
               <AvailabilityPanel />
               <NewsFeedPanel />
@@ -57,7 +58,7 @@ export default function App() {
                       <X size={18} />
                     </button>
                   </div>
-                  <DraftControlPanel />
+                  <LiveDraftStatusPanel />
                   <RecommendationPanel />
                   <AvailabilityPanel />
                   <NewsFeedPanel />
@@ -79,6 +80,7 @@ export default function App() {
             )}
           </>
         )}
+        {view === 'mock' && <MockDraftView />}
         {view === 'roster' && (
           <div className="flex-1 overflow-y-auto">
             <RosterTracker />

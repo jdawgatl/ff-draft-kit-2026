@@ -11,6 +11,7 @@ interface HeaderProps {
 
 const VIEWS: { id: string; label: string }[] = [
   { id: 'board', label: 'Draft Board' },
+  { id: 'mock', label: 'Mock Draft' },
   { id: 'roster', label: 'Roster Tracker' },
   { id: 'handcuffs', label: 'Handcuff Matrix' },
   { id: 'watchlist', label: 'Watchlist' },
@@ -18,6 +19,9 @@ const VIEWS: { id: string; label: string }[] = [
 
 export default function Header({ onOpenSettings, activeView, onChangeView }: HeaderProps) {
   const syncConnected = useDraftStore((s) => s.syncConnected);
+  const teams = useDraftStore((s) => s.settings.teams);
+  const myPickSlot = useDraftStore((s) => s.settings.myPickSlot);
+  const slotConfirmed = useDraftStore((s) => s.draftSlotConfirmed);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string | null>(null);
 
@@ -48,7 +52,9 @@ export default function Header({ onOpenSettings, activeView, onChangeView }: Hea
           </div>
           <div className="min-w-0 leading-tight">
             <div className="truncate text-sm font-bold tracking-tight">Draft Kit</div>
-            <div className="hidden truncate text-[10px] text-slate-400 sm:block">12-Team · Slot #6 · Custom Scoring</div>
+            <div className="hidden truncate text-[10px] text-slate-400 sm:block">
+              {teams}-Team · {slotConfirmed ? `Slot #${myPickSlot}` : `Slot #${myPickSlot} (default — set in Settings)`} · Custom Scoring
+            </div>
           </div>
         </div>
 

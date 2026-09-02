@@ -13,16 +13,25 @@ const BOT_NAMES = [
   'Hail Mary Heroes', 'Turf Titans', 'Prime Time Picks',
 ];
 
-function buildTeams(settings: LeagueSettings): TeamInfo[] {
+/**
+ * Builds the 12-team slot list. `fakeBotNames` picks the naming scheme:
+ * - true (mock draft): flavorful AI-opponent names, since these teams are
+ *   simulated and it should be obvious this isn't your real league.
+ * - false (live tracking): plain "Team N" placeholders, since these slots
+ *   represent your actual Yahoo league mates and shouldn't look invented.
+ */
+function buildTeams(settings: LeagueSettings, fakeBotNames: boolean): TeamInfo[] {
   const teams: TeamInfo[] = [];
   let botIdx = 0;
   for (let slot = 1; slot <= settings.teams; slot++) {
     const index = slot - 1;
     if (slot === settings.myPickSlot) {
       teams.push({ index, name: 'My Team', isUser: true });
-    } else {
+    } else if (fakeBotNames) {
       teams.push({ index, name: BOT_NAMES[botIdx % BOT_NAMES.length], isUser: false });
       botIdx++;
+    } else {
+      teams.push({ index, name: `Team ${slot}`, isUser: false });
     }
   }
   return teams;
@@ -59,32 +68,42 @@ function emptyRosters(teams: TeamInfo[]): Record<number, string[]> {
 interface DraftStoreState {
   settings: LeagueSettings;
   allPlayers: Player[];
-  teams: TeamInfo[];
-  picks: DraftPick[];
-  currentPickIndex: number;
-  draftedPlayerIds: string[];
-  rosters: Record<number, string[]>;
   watchlist: string[];
-  simRunning: boolean;
-  simSpeed: 1 | 2 | 0;
   syncConnected: boolean;
   lastSyncedPickSignature: string | null;
   viewingPlayerId: string | null;
+  viewingPlayerContext: 'live' | 'mock';
+  /** Whether the user has explicitly confirmed their real draft slot (vs. the untouched default). */
+  draftSlotConfirmed: boolean;
+
+  // ---- LIVE: tracks your actual Yahoo draft, pick by pick, as it happens
+  // (via the Chrome extension's auto-sync or by manually marking picks).
+  // Nothing here is ever auto-picked or simulated.
+  liveTeams: TeamInfo[];
+  livePicks: DraftPick[];
+  liveCurrentPickIndex: number;
+  liveDraftedPlayerIds: string[];
+  liveRosters: Record<number, string[]>;
+
+  // ---- MOCK: a fully separate practice draft against 11 AI-controlled
+  // opponents. Completely independent from the live draft above — running
+  // or resetting a mock draft never touches your live tracking data.
+  mockTeams: TeamInfo[];
+  mockPicks: DraftPick[];
+  mockCurrentPickIndex: number;
+  mockDraftedPlayerIds: string[];
+  mockRosters: Record<number, string[]>;
+  mockSimRunning: boolean;
+  mockSimSpeed: 1 | 2 | 0;
 
   // actions
-  setViewingPlayer: (id: string | null) => void;
+  setViewingPlayer: (id: string | null, context?: 'live' | 'mock') => void;
   setMyPickSlot: (slot: number) => void;
   updateScoring: (scoring: ScoringSettings) => void;
-  draftPlayer: (playerId: string, teamIndexOverride?: number) => void;
-  undoLastPick: () => void;
-  resetDraft: () => void;
-  toggleWatch: (playerId: string) => void;
-  setSyncConnected: (v: boolean) => void;
-  simStep: () => void; // advance exactly one pick (bot AI or, if user's turn, no-op unless forced)
-  pickForMe: () => void;
-  fastForwardToMyPick: () => void;
-  setSimRunning: (v: boolean) => void;
-  setSimSpeed: (s: 1 | 2 | 0) => void;
+
+  liveDraftPlayer: (playerId: string, teamIndexOverride?: number) => void;
+  liveUndoLastPick: () => void;
+  liveResetDraft: () => void;
   applyExternalPick: (evt: {
     playerName: string;
     playerTeam?: string;
@@ -92,6 +111,17 @@ interface DraftStoreState {
     pickNumber?: number;
     teamName?: string;
   }) => boolean;
+
+  mockDraftPlayer: (playerId: string, teamIndexOverride?: number) => void;
+  mockUndoLastPick: () => void;
+  mockResetDraft: () => void;
+  toggleWatch: (playerId: string) => void;
+  setSyncConnected: (v: boolean) => void;
+  mockSimStep: () => void; // advance exactly one mock pick (bot AI or, if user's turn, no-op unless forced)
+  mockPickForMe: () => void;
+  mockFastForwardToMyPick: () => void;
+  setMockSimRunning: (v: boolean) => void;
+  setMockSimSpeed: (s: 1 | 2 | 0) => void;
   applyPlayerOverrides: (overrides: Record<string, PlayerOverride>) => void;
 }
 
@@ -110,30 +140,47 @@ export const useDraftStore = create<DraftStoreState>()(
     (set, get) => ({
       settings: DEFAULT_LEAGUE_SETTINGS,
       allPlayers: buildPlayerPool(DEFAULT_LEAGUE_SETTINGS),
-      teams: buildTeams(DEFAULT_LEAGUE_SETTINGS),
-      picks: buildPicks(DEFAULT_LEAGUE_SETTINGS),
-      currentPickIndex: 0,
-      draftedPlayerIds: [],
-      rosters: emptyRosters(buildTeams(DEFAULT_LEAGUE_SETTINGS)),
       watchlist: [],
-      simRunning: false,
-      simSpeed: 1,
       syncConnected: false,
       lastSyncedPickSignature: null,
       viewingPlayerId: null,
+      viewingPlayerContext: 'live',
+      draftSlotConfirmed: false,
 
-      setViewingPlayer: (id) => set({ viewingPlayerId: id }),
+      liveTeams: buildTeams(DEFAULT_LEAGUE_SETTINGS, false),
+      livePicks: buildPicks(DEFAULT_LEAGUE_SETTINGS),
+      liveCurrentPickIndex: 0,
+      liveDraftedPlayerIds: [],
+      liveRosters: emptyRosters(buildTeams(DEFAULT_LEAGUE_SETTINGS, false)),
+
+      mockTeams: buildTeams(DEFAULT_LEAGUE_SETTINGS, true),
+      mockPicks: buildPicks(DEFAULT_LEAGUE_SETTINGS),
+      mockCurrentPickIndex: 0,
+      mockDraftedPlayerIds: [],
+      mockRosters: emptyRosters(buildTeams(DEFAULT_LEAGUE_SETTINGS, true)),
+      mockSimRunning: false,
+      mockSimSpeed: 1,
+
+      setViewingPlayer: (id, context = 'live') => set({ viewingPlayerId: id, viewingPlayerContext: context }),
 
       setMyPickSlot: (slot) => {
         const settings = { ...get().settings, myPickSlot: slot };
-        const teams = buildTeams(settings);
+        const liveTeams = buildTeams(settings, false);
+        const mockTeams = buildTeams(settings, true);
         set({
           settings,
-          teams,
-          picks: buildPicks(settings),
-          currentPickIndex: 0,
-          draftedPlayerIds: [],
-          rosters: emptyRosters(teams),
+          draftSlotConfirmed: true,
+          liveTeams,
+          livePicks: buildPicks(settings),
+          liveCurrentPickIndex: 0,
+          liveDraftedPlayerIds: [],
+          liveRosters: emptyRosters(liveTeams),
+          mockTeams,
+          mockPicks: buildPicks(settings),
+          mockCurrentPickIndex: 0,
+          mockDraftedPlayerIds: [],
+          mockRosters: emptyRosters(mockTeams),
+          mockSimRunning: false,
         });
       },
 
@@ -142,60 +189,142 @@ export const useDraftStore = create<DraftStoreState>()(
         set({ settings, allPlayers: buildPlayerPool(settings) });
       },
 
-      draftPlayer: (playerId, teamIndexOverride) => {
+      // ---- LIVE ----
+      liveDraftPlayer: (playerId, teamIndexOverride) => {
         const state = get();
-        if (state.draftedPlayerIds.includes(playerId)) return;
-        if (state.currentPickIndex >= state.picks.length) return;
+        if (state.liveDraftedPlayerIds.includes(playerId)) return;
+        if (state.liveCurrentPickIndex >= state.livePicks.length) return;
 
-        const pick = state.picks[state.currentPickIndex];
+        const pick = state.livePicks[state.liveCurrentPickIndex];
         const teamIndex = teamIndexOverride ?? pick.teamIndex;
 
-        const updatedPicks = [...state.picks];
-        updatedPicks[state.currentPickIndex] = { ...pick, playerId, teamIndex };
+        const updatedPicks = [...state.livePicks];
+        updatedPicks[state.liveCurrentPickIndex] = { ...pick, playerId, teamIndex };
 
-        const rosters = { ...state.rosters, [teamIndex]: [...(state.rosters[teamIndex] ?? []), playerId] };
+        const rosters = { ...state.liveRosters, [teamIndex]: [...(state.liveRosters[teamIndex] ?? []), playerId] };
 
         set({
-          picks: updatedPicks,
-          draftedPlayerIds: [...state.draftedPlayerIds, playerId],
-          rosters,
-          currentPickIndex: state.currentPickIndex + 1,
+          livePicks: updatedPicks,
+          liveDraftedPlayerIds: [...state.liveDraftedPlayerIds, playerId],
+          liveRosters: rosters,
+          liveCurrentPickIndex: state.liveCurrentPickIndex + 1,
         });
       },
 
-      undoLastPick: () => {
+      liveUndoLastPick: () => {
         const state = get();
-        if (state.currentPickIndex === 0) return;
-        const idx = state.currentPickIndex - 1;
-        const pick = state.picks[idx];
+        if (state.liveCurrentPickIndex === 0) return;
+        const idx = state.liveCurrentPickIndex - 1;
+        const pick = state.livePicks[idx];
         if (!pick.playerId) {
-          set({ currentPickIndex: idx });
+          set({ liveCurrentPickIndex: idx });
           return;
         }
         const rosters = {
-          ...state.rosters,
-          [pick.teamIndex]: (state.rosters[pick.teamIndex] ?? []).filter((id) => id !== pick.playerId),
+          ...state.liveRosters,
+          [pick.teamIndex]: (state.liveRosters[pick.teamIndex] ?? []).filter((id) => id !== pick.playerId),
         };
-        const updatedPicks = [...state.picks];
+        const updatedPicks = [...state.livePicks];
         updatedPicks[idx] = { ...pick, playerId: null };
         set({
-          picks: updatedPicks,
-          draftedPlayerIds: state.draftedPlayerIds.filter((id) => id !== pick.playerId),
-          rosters,
-          currentPickIndex: idx,
+          livePicks: updatedPicks,
+          liveDraftedPlayerIds: state.liveDraftedPlayerIds.filter((id) => id !== pick.playerId),
+          liveRosters: rosters,
+          liveCurrentPickIndex: idx,
         });
       },
 
-      resetDraft: () => {
+      liveResetDraft: () => {
         const { settings } = get();
-        const teams = buildTeams(settings);
+        const liveTeams = buildTeams(settings, false);
         set({
-          teams,
-          picks: buildPicks(settings),
-          currentPickIndex: 0,
-          draftedPlayerIds: [],
-          rosters: emptyRosters(teams),
-          simRunning: false,
+          liveTeams,
+          livePicks: buildPicks(settings),
+          liveCurrentPickIndex: 0,
+          liveDraftedPlayerIds: [],
+          liveRosters: emptyRosters(liveTeams),
+          syncConnected: false,
+          lastSyncedPickSignature: null,
+        });
+      },
+
+      applyExternalPick: (evt) => {
+        const state = get();
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
+        const target = norm(evt.playerName);
+        const match = state.allPlayers.find((p) => {
+          if (state.liveDraftedPlayerIds.includes(p.id)) return false;
+          const nameMatch = norm(p.name) === target || norm(p.name).includes(target) || target.includes(norm(p.name));
+          if (!evt.playerTeam) return nameMatch;
+          return nameMatch && (p.team.toLowerCase() === evt.playerTeam.toLowerCase() || true);
+        });
+        if (!match) return false;
+
+        const signature = `${evt.pickNumber ?? state.liveCurrentPickIndex}-${match.id}`;
+        if (state.lastSyncedPickSignature === signature) return true;
+
+        const pick = state.livePicks[state.liveCurrentPickIndex];
+        const teamIndex = pick ? pick.teamIndex : 0;
+        get().liveDraftPlayer(match.id, teamIndex);
+        set({ lastSyncedPickSignature: signature, syncConnected: true });
+        return true;
+      },
+
+      // ---- MOCK ----
+      mockDraftPlayer: (playerId, teamIndexOverride) => {
+        const state = get();
+        if (state.mockDraftedPlayerIds.includes(playerId)) return;
+        if (state.mockCurrentPickIndex >= state.mockPicks.length) return;
+
+        const pick = state.mockPicks[state.mockCurrentPickIndex];
+        const teamIndex = teamIndexOverride ?? pick.teamIndex;
+
+        const updatedPicks = [...state.mockPicks];
+        updatedPicks[state.mockCurrentPickIndex] = { ...pick, playerId, teamIndex };
+
+        const rosters = { ...state.mockRosters, [teamIndex]: [...(state.mockRosters[teamIndex] ?? []), playerId] };
+
+        set({
+          mockPicks: updatedPicks,
+          mockDraftedPlayerIds: [...state.mockDraftedPlayerIds, playerId],
+          mockRosters: rosters,
+          mockCurrentPickIndex: state.mockCurrentPickIndex + 1,
+        });
+      },
+
+      mockUndoLastPick: () => {
+        const state = get();
+        if (state.mockCurrentPickIndex === 0) return;
+        const idx = state.mockCurrentPickIndex - 1;
+        const pick = state.mockPicks[idx];
+        if (!pick.playerId) {
+          set({ mockCurrentPickIndex: idx });
+          return;
+        }
+        const rosters = {
+          ...state.mockRosters,
+          [pick.teamIndex]: (state.mockRosters[pick.teamIndex] ?? []).filter((id) => id !== pick.playerId),
+        };
+        const updatedPicks = [...state.mockPicks];
+        updatedPicks[idx] = { ...pick, playerId: null };
+        set({
+          mockPicks: updatedPicks,
+          mockDraftedPlayerIds: state.mockDraftedPlayerIds.filter((id) => id !== pick.playerId),
+          mockRosters: rosters,
+          mockCurrentPickIndex: idx,
+        });
+      },
+
+      mockResetDraft: () => {
+        const { settings } = get();
+        const mockTeams = buildTeams(settings, true);
+        set({
+          mockTeams,
+          mockPicks: buildPicks(settings),
+          mockCurrentPickIndex: 0,
+          mockDraftedPlayerIds: [],
+          mockRosters: emptyRosters(mockTeams),
+          mockSimRunning: false,
         });
       },
 
@@ -210,85 +339,62 @@ export const useDraftStore = create<DraftStoreState>()(
 
       setSyncConnected: (v) => set({ syncConnected: v }),
 
-      simStep: () => {
+      mockSimStep: () => {
         const state = get();
-        if (state.currentPickIndex >= state.picks.length) {
-          set({ simRunning: false });
+        if (state.mockCurrentPickIndex >= state.mockPicks.length) {
+          set({ mockSimRunning: false });
           return;
         }
-        const pick = state.picks[state.currentPickIndex];
-        const available = state.allPlayers.filter((p) => !state.draftedPlayerIds.includes(p.id));
+        const pick = state.mockPicks[state.mockCurrentPickIndex];
+        const available = state.allPlayers.filter((p) => !state.mockDraftedPlayerIds.includes(p.id));
         if (available.length === 0) {
-          set({ simRunning: false });
+          set({ mockSimRunning: false });
           return;
         }
         if (pick.isMyPick) {
           // Don't auto-draft for the user during a plain sim step; caller
-          // should use pickForMe() explicitly. Pause the runner instead.
-          set({ simRunning: false });
+          // should use mockPickForMe() explicitly. Pause the runner instead.
+          set({ mockSimRunning: false });
           return;
         }
-        const botRoster = state.rosters[pick.teamIndex] ?? [];
+        const botRoster = state.mockRosters[pick.teamIndex] ?? [];
         const chosen = pickForBot(botRoster, available, state.allPlayers, state.settings, pick.pickNumber);
-        get().draftPlayer(chosen.id, pick.teamIndex);
+        get().mockDraftPlayer(chosen.id, pick.teamIndex);
       },
 
-      pickForMe: () => {
+      mockPickForMe: () => {
         const state = get();
-        if (state.currentPickIndex >= state.picks.length) return;
-        const pick = state.picks[state.currentPickIndex];
-        const available = state.allPlayers.filter((p) => !state.draftedPlayerIds.includes(p.id));
+        if (state.mockCurrentPickIndex >= state.mockPicks.length) return;
+        const pick = state.mockPicks[state.mockCurrentPickIndex];
+        const available = state.allPlayers.filter((p) => !state.mockDraftedPlayerIds.includes(p.id));
         if (available.length === 0) return;
         const myFuturePicks = computeMyPickNumbers(state.settings).filter((n) => n > pick.pickNumber);
         const recs = topRecommendations(
           available,
-          state.rosters[pick.teamIndex] ?? [],
+          state.mockRosters[pick.teamIndex] ?? [],
           state.allPlayers,
           state.settings,
           pick.pickNumber,
           myFuturePicks[0] ?? null,
           1
         );
-        if (recs.length) get().draftPlayer(recs[0].player.id, pick.teamIndex);
+        if (recs.length) get().mockDraftPlayer(recs[0].player.id, pick.teamIndex);
       },
 
-      fastForwardToMyPick: () => {
-        const state = get();
+      mockFastForwardToMyPick: () => {
         let guard = 0;
         while (guard < 500) {
           const s = get();
-          if (s.currentPickIndex >= s.picks.length) break;
-          const pick = s.picks[s.currentPickIndex];
+          if (s.mockCurrentPickIndex >= s.mockPicks.length) break;
+          const pick = s.mockPicks[s.mockCurrentPickIndex];
           if (pick.isMyPick) break;
-          get().simStep();
+          get().mockSimStep();
           guard++;
         }
       },
 
-      setSimRunning: (v) => set({ simRunning: v }),
-      setSimSpeed: (spd) => set({ simSpeed: spd }),
-
-      applyExternalPick: (evt) => {
-        const state = get();
-        const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
-        const target = norm(evt.playerName);
-        const match = state.allPlayers.find((p) => {
-          if (state.draftedPlayerIds.includes(p.id)) return false;
-          const nameMatch = norm(p.name) === target || norm(p.name).includes(target) || target.includes(norm(p.name));
-          if (!evt.playerTeam) return nameMatch;
-          return nameMatch && (p.team.toLowerCase() === evt.playerTeam.toLowerCase() || true);
-        });
-        if (!match) return false;
-
-        const signature = `${evt.pickNumber ?? state.currentPickIndex}-${match.id}`;
-        if (state.lastSyncedPickSignature === signature) return true;
-
-        const pick = state.picks[state.currentPickIndex];
-        const teamIndex = pick ? pick.teamIndex : 0;
-        get().draftPlayer(match.id, teamIndex);
-        set({ lastSyncedPickSignature: signature, syncConnected: true });
-        return true;
-      },
+      setMockSimRunning: (v) => set({ mockSimRunning: v }),
+      setMockSimSpeed: (spd) => set({ mockSimSpeed: spd }),
 
       applyPlayerOverrides: (overrides) => {
         const state = get();
@@ -321,12 +427,18 @@ export const useDraftStore = create<DraftStoreState>()(
       storage: createJSONStorage(() => crossStorage),
       partialize: (state) => ({
         settings: state.settings,
-        picks: state.picks,
-        currentPickIndex: state.currentPickIndex,
-        draftedPlayerIds: state.draftedPlayerIds,
-        rosters: state.rosters,
         watchlist: state.watchlist,
-        teams: state.teams,
+        draftSlotConfirmed: state.draftSlotConfirmed,
+        liveTeams: state.liveTeams,
+        livePicks: state.livePicks,
+        liveCurrentPickIndex: state.liveCurrentPickIndex,
+        liveDraftedPlayerIds: state.liveDraftedPlayerIds,
+        liveRosters: state.liveRosters,
+        mockTeams: state.mockTeams,
+        mockPicks: state.mockPicks,
+        mockCurrentPickIndex: state.mockCurrentPickIndex,
+        mockDraftedPlayerIds: state.mockDraftedPlayerIds,
+        mockRosters: state.mockRosters,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as object) } as DraftStoreState;
@@ -339,21 +451,44 @@ export const useDraftStore = create<DraftStoreState>()(
   )
 );
 
+// ---- LIVE selectors (used by the Draft Board, Roster, Handcuffs, Watchlist,
+// and Player Detail views — i.e. everything that tracks your real draft) ----
 export function selectAvailablePlayers(state: DraftStoreState): Player[] {
-  return state.allPlayers.filter((p) => !state.draftedPlayerIds.includes(p.id));
+  return state.allPlayers.filter((p) => !state.liveDraftedPlayerIds.includes(p.id));
 }
 
 export function selectMyRoster(state: DraftStoreState): string[] {
-  const myTeam = state.teams.find((t) => t.isUser);
-  return myTeam ? state.rosters[myTeam.index] ?? [] : [];
+  const myTeam = state.liveTeams.find((t) => t.isUser);
+  return myTeam ? state.liveRosters[myTeam.index] ?? [] : [];
 }
 
 export function selectCurrentPick(state: DraftStoreState): DraftPick | null {
-  return state.picks[state.currentPickIndex] ?? null;
+  return state.livePicks[state.liveCurrentPickIndex] ?? null;
 }
 
 export function selectMyFuturePickNumbers(state: DraftStoreState): number[] {
   const current = selectCurrentPick(state);
+  const all = computeMyPickNumbers(state.settings);
+  if (!current) return [];
+  return all.filter((n) => n >= current.pickNumber);
+}
+
+// ---- MOCK selectors (used only by the separate Mock Draft tool) ----
+export function selectMockAvailablePlayers(state: DraftStoreState): Player[] {
+  return state.allPlayers.filter((p) => !state.mockDraftedPlayerIds.includes(p.id));
+}
+
+export function selectMockMyRoster(state: DraftStoreState): string[] {
+  const myTeam = state.mockTeams.find((t) => t.isUser);
+  return myTeam ? state.mockRosters[myTeam.index] ?? [] : [];
+}
+
+export function selectMockCurrentPick(state: DraftStoreState): DraftPick | null {
+  return state.mockPicks[state.mockCurrentPickIndex] ?? null;
+}
+
+export function selectMockMyFuturePickNumbers(state: DraftStoreState): number[] {
+  const current = selectMockCurrentPick(state);
   const all = computeMyPickNumbers(state.settings);
   if (!current) return [];
   return all.filter((n) => n >= current.pickNumber);

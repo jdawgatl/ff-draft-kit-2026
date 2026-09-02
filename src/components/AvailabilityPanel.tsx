@@ -6,6 +6,9 @@ import {
   selectAvailablePlayers,
   selectCurrentPick,
   selectMyFuturePickNumbers,
+  selectMockAvailablePlayers,
+  selectMockCurrentPick,
+  selectMockMyFuturePickNumbers,
 } from '../store/draftStore';
 import { survivalProbability } from '../lib/normal';
 import { pct } from '../lib/format';
@@ -16,11 +19,16 @@ function labelFor(p: number): { text: string; cls: string; dot: string } {
   return { text: 'Unlikely', cls: 'text-red-300', dot: 'bg-red-400' };
 }
 
-export default function AvailabilityPanel() {
+interface Props {
+  mode?: 'live' | 'mock';
+}
+
+export default function AvailabilityPanel({ mode = 'live' }: Props) {
+  const isMock = mode === 'mock';
   const watchlist = useDraftStore((s) => s.watchlist);
-  const available = useDraftStore(useShallow(selectAvailablePlayers));
-  const currentPick = useDraftStore(selectCurrentPick);
-  const futurePicks = useDraftStore(useShallow(selectMyFuturePickNumbers));
+  const available = useDraftStore(useShallow(isMock ? selectMockAvailablePlayers : selectAvailablePlayers));
+  const currentPick = useDraftStore(isMock ? selectMockCurrentPick : selectCurrentPick);
+  const futurePicks = useDraftStore(useShallow(isMock ? selectMockMyFuturePickNumbers : selectMyFuturePickNumbers));
 
   const nextPick = futurePicks[1] ?? futurePicks[0] ?? null;
 

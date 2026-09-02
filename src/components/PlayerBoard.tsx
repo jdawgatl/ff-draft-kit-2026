@@ -1,12 +1,18 @@
 import { useMemo, useState } from 'react';
-import { Star, Search, AlertTriangle, TrendingDown, TrendingUp, Flame, Newspaper } from 'lucide-react';
+import { Star, Search, AlertTriangle, TrendingDown, TrendingUp, Flame, Newspaper, ArrowUp, ArrowDown } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
-import { useDraftStore, selectAvailablePlayers, selectCurrentPick } from '../store/draftStore';
+import {
+  useDraftStore,
+  selectAvailablePlayers,
+  selectCurrentPick,
+  selectMockAvailablePlayers,
+  selectMockCurrentPick,
+} from '../store/draftStore';
 import type { Player, Position } from '../types';
 import { POSITION_COLORS, TIER_COLORS, formatPick } from '../lib/format';
 
 type PosFilter = 'ALL' | Position | 'STARRED';
-type SortKey = 'rank' | 'adp' | 'points' | 'vorp' | 'ecr';
+type SortKey = 'rank' | 'ecr' | 'points' | 'vorp' | 'adp';
 
 const TABS: { id: PosFilter; label: string }[] = [
   { id: 'ALL', label: 'All' },
@@ -19,21 +25,47 @@ const TABS: { id: PosFilter; label: string }[] = [
   { id: 'STARRED', label: 'Starred' },
 ];
 
-export default function PlayerBoard() {
+// Sensible default sort direction per column: rank/ecr/adp are "lower is
+// better" (ascending), points/vorp are "higher is better" (descending).
+const DEFAULT_DIR: Record<SortKey, 'asc' | 'desc'> = {
+  rank: 'asc',
+  ecr: 'asc',
+  points: 'desc',
+  vorp: 'desc',
+  adp: 'asc',
+};
+
+interface Props {
+  /** 'live' (default) tracks your real draft. 'mock' is the separate practice-draft tool. */
+  mode?: 'live' | 'mock';
+}
+
+export default function PlayerBoard({ mode = 'live' }: Props) {
+  const isMock = mode === 'mock';
   const allPlayers = useDraftStore((s) => s.allPlayers);
-  const draftedIds = useDraftStore((s) => s.draftedPlayerIds);
+  const draftedIds = useDraftStore((s) => (isMock ? s.mockDraftedPlayerIds : s.liveDraftedPlayerIds));
   const watchlist = useDraftStore((s) => s.watchlist);
   const teams = useDraftStore((s) => s.settings.teams);
   const toggleWatch = useDraftStore((s) => s.toggleWatch);
-  const draftPlayer = useDraftStore((s) => s.draftPlayer);
+  const draftPlayer = useDraftStore((s) => (isMock ? s.mockDraftPlayer : s.liveDraftPlayer));
   const setViewingPlayer = useDraftStore((s) => s.setViewingPlayer);
-  const currentPick = useDraftStore(selectCurrentPick);
-  const available = useDraftStore(useShallow(selectAvailablePlayers));
+  const currentPick = useDraftStore(isMock ? selectMockCurrentPick : selectCurrentPick);
+  const available = useDraftStore(useShallow(isMock ? selectMockAvailablePlayers : selectAvailablePlayers));
 
   const [posFilter, setPosFilter] = useState<PosFilter>('ALL');
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('rank');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [showDraftedToo, setShowDraftedToo] = useState(false);
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(DEFAULT_DIR[key]);
+    }
+  }
 
   const draftedSet = useMemo(() => new Set(draftedIds), [draftedIds]);
   const watchSet = useMemo(() => new Set(watchlist), [watchlist]);
@@ -52,24 +84,25 @@ export default function PlayerBoard() {
       );
     }
     const sorted = [...list];
+    const dirMul = sortDir === 'asc' ? 1 : -1;
     switch (sortKey) {
       case 'adp':
-        sorted.sort((a, b) => a.adp - b.adp);
+        sorted.sort((a, b) => dirMul * (a.adp - b.adp));
         break;
       case 'points':
-        sorted.sort((a, b) => b.projectedPoints - a.projectedPoints);
+        sorted.sort((a, b) => dirMul * (a.projectedPoints - b.projectedPoints));
         break;
       case 'vorp':
-        sorted.sort((a, b) => b.vorp - a.vorp);
+        sorted.sort((a, b) => dirMul * (a.vorp - b.vorp));
         break;
       case 'ecr':
-        sorted.sort((a, b) => (a.expertRank ?? 9999) - (b.expertRank ?? 9999));
+        sorted.sort((a, b) => dirMul * ((a.expertRank ?? 9999) - (b.expertRank ?? 9999)));
         break;
       default:
-        sorted.sort((a, b) => a.overallRank - b.overallRank);
+        sorted.sort((a, b) => dirMul * (a.overallRank - b.overallRank));
     }
     return sorted;
-  }, [allPlayers, available, showDraftedToo, posFilter, query, sortKey, watchSet]);
+  }, [allPlayers, available, showDraftedToo, posFilter, query, sortKey, sortDir, watchSet]);
 
   return (
     <div className="flex h-full flex-col">
@@ -99,17 +132,6 @@ export default function PlayerBoard() {
               className="w-44 rounded-md border border-slate-700 bg-slate-900 py-1.5 pl-7 pr-2 text-xs text-slate-200 placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
             />
           </div>
-          <select
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
-          >
-            <option value="rank">Sort: Custom Rank</option>
-            <option value="adp">Sort: ADP</option>
-            <option value="points">Sort: Proj. Points</option>
-            <option value="vorp">Sort: VORP</option>
-            <option value="ecr">Sort: Expert Rank (ECR)</option>
-          </select>
           <label className="flex items-center gap-1 text-[11px] text-slate-400">
             <input type="checkbox" checked={showDraftedToo} onChange={(e) => setShowDraftedToo(e.target.checked)} />
             Show drafted
@@ -122,16 +144,31 @@ export default function PlayerBoard() {
           <thead className="sticky top-0 z-10 bg-slate-950">
             <tr className="border-b border-slate-800 text-left text-[10px] uppercase tracking-wide text-slate-500">
               <th className="w-8 px-2 py-2"></th>
-              <th className="px-2 py-2">Rk</th>
-              <th className="px-2 py-2" title="FantasyPros consensus expert rank (needs API key in Settings)">ECR</th>
+              <SortableHeader label="Rk" sortKey="rank" active={sortKey} dir={sortDir} onSort={handleSort} title="Custom rank from this app's projection model" />
+              <SortableHeader
+                label="ECR"
+                sortKey="ecr"
+                active={sortKey}
+                dir={sortDir}
+                onSort={handleSort}
+                title="FantasyPros consensus expert rank (needs API key in Settings)"
+              />
               <th className="px-2 py-2">Player</th>
               <th className="px-2 py-2">Pos</th>
               <th className="px-2 py-2">Team</th>
               <th className="px-2 py-2">Bye</th>
               <th className="px-2 py-2">Tier</th>
-              <th className="px-2 py-2 text-right">Proj Pts</th>
-              <th className="px-2 py-2 text-right">VORP</th>
-              <th className="px-2 py-2 text-right">ADP</th>
+              <SortableHeader label="Proj Pts" sortKey="points" active={sortKey} dir={sortDir} onSort={handleSort} align="right" title="Projected fantasy points for the full season under your league's scoring" />
+              <SortableHeader
+                label="VORP"
+                sortKey="vorp"
+                active={sortKey}
+                dir={sortDir}
+                onSort={handleSort}
+                align="right"
+                title="Value Over Replacement Player: projected points above a freely-available replacement at the same position. Higher = more valuable relative to your other draft options, not just in raw points."
+              />
+              <SortableHeader label="ADP" sortKey="adp" active={sortKey} dir={sortDir} onSort={handleSort} align="right" title="Consensus average draft position" />
               <th className="px-2 py-2">Flags</th>
               <th className="px-2 py-2"></th>
             </tr>
@@ -145,7 +182,7 @@ export default function PlayerBoard() {
                 isStarred={watchSet.has(p.id)}
                 onToggleWatch={() => toggleWatch(p.id)}
                 onDraft={() => draftPlayer(p.id)}
-                onView={() => setViewingPlayer(p.id)}
+                onView={() => setViewingPlayer(p.id, mode)}
                 currentPickNumber={currentPick?.pickNumber ?? 1}
                 teams={teams}
               />
@@ -161,6 +198,40 @@ export default function PlayerBoard() {
         </table>
       </div>
     </div>
+  );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  active,
+  dir,
+  onSort,
+  align = 'left',
+  title,
+}: {
+  label: string;
+  sortKey: SortKey;
+  active: SortKey;
+  dir: 'asc' | 'desc';
+  onSort: (key: SortKey) => void;
+  align?: 'left' | 'right';
+  title?: string;
+}) {
+  const isActive = active === sortKey;
+  return (
+    <th className={`px-2 py-2 ${align === 'right' ? 'text-right' : 'text-left'}`} title={title}>
+      <button
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex items-center gap-0.5 whitespace-nowrap hover:text-slate-200 ${
+          isActive ? 'text-emerald-300' : 'text-slate-500'
+        }`}
+      >
+        {align === 'right' && isActive && (dir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+        {label}
+        {align === 'left' && isActive && (dir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+      </button>
+    </th>
   );
 }
 
@@ -250,7 +321,9 @@ function PlayerRow({
       <td className="px-2 py-1.5 tabular-nums text-slate-400">{player.bye}</td>
       <td className={`px-2 py-1.5 font-semibold tabular-nums ${TIER_COLORS[player.tier]}`}>T{player.tier}</td>
       <td className="px-2 py-1.5 text-right tabular-nums text-slate-200">{player.projectedPoints.toFixed(1)}</td>
-      <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{player.vorp.toFixed(1)}</td>
+      <td className="px-2 py-1.5 text-right tabular-nums text-slate-300" title="Value Over Replacement Player">
+        {player.vorp.toFixed(1)}
+      </td>
       <td className="px-2 py-1.5 text-right tabular-nums text-slate-400">
         {formatPick(Math.round(player.adp), teams)}
       </td>

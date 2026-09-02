@@ -12,7 +12,7 @@ interface Props {
 export default function SettingsModal({ onClose }: Props) {
   const settings = useDraftStore((s) => s.settings);
   const setMyPickSlot = useDraftStore((s) => s.setMyPickSlot);
-  const resetDraft = useDraftStore((s) => s.resetDraft);
+  const resetDraft = useDraftStore((s) => s.liveResetDraft);
 
   const [consumerKey, setConsumerKey] = useState(() => localStorage.getItem('ffdk-yahoo-key') ?? '');
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
@@ -211,14 +211,17 @@ export default function SettingsModal({ onClose }: Props) {
           <section className="border-t border-slate-800 pt-4">
             <button
               onClick={() => {
-                if (confirm('Reset the current draft board? This clears all picks (settings are kept).')) {
+                if (confirm('Reset your live draft board? This clears all tracked picks (settings are kept).')) {
                   resetDraft();
                 }
               }}
               className="w-full rounded-md border border-red-800/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/20"
             >
-              Reset Draft Board
+              Reset Live Draft Board
             </button>
+            <p className="mt-1.5 text-[10px] text-slate-600">
+              Only affects your live draft tracker (this page). The separate Mock Draft tool has its own reset button.
+            </p>
           </section>
         </div>
       </div>

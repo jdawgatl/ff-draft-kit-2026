@@ -17,11 +17,14 @@ interface ProxyResource {
   params?: Record<string, string>;
 }
 
-async function callProxy(apiKey: string, opts: ProxyResource): Promise<unknown> {
+// apiKey is optional — the server proxy has a shared FantasyPros key baked
+// in via an environment variable, so this is only needed as a local-dev
+// override when that env var isn't configured.
+async function callProxy(apiKey: string | undefined, opts: ProxyResource): Promise<unknown> {
   const res = await fetch('/api/fantasypros', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey, sport: 'nfl', ...opts }),
+    body: JSON.stringify({ ...(apiKey ? { apiKey } : {}), sport: 'nfl', ...opts }),
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || `FantasyPros proxy responded ${res.status}`);
@@ -55,7 +58,7 @@ export interface ExpertRankResult {
 }
 
 export async function fetchExpertRankings(
-  apiKey: string,
+  apiKey: string | undefined,
   scoring: 'PPR' | 'HALF' | 'STD' = 'PPR'
 ): Promise<ExpertRankResult> {
   const json = await callProxy(apiKey, { resource: 'rankings', params: { position: 'ALL', scoring } });
@@ -81,7 +84,7 @@ export interface ExpertNewsResult {
   byNormalizedName: Map<string, NewsItem[]>;
 }
 
-export async function fetchExpertNews(apiKey: string): Promise<ExpertNewsResult> {
+export async function fetchExpertNews(apiKey: string | undefined): Promise<ExpertNewsResult> {
   const json = await callProxy(apiKey, { resource: 'news', params: { limit: '100' } });
   const rows = asArray((json as { news?: unknown }).news ?? json);
 

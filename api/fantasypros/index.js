@@ -3,20 +3,16 @@
 // support from FantasyPros directly, and so the request is easy to cache /
 // rate-limit centrally if you ever need to.
 //
-// The user supplies their OWN FantasyPros API key (requested free for
-// personal, non-commercial use at https://secure.fantasypros.com/api-keys/request/
-// — see README.md → "FantasyPros API Setup"). The key is sent from the
-// client with each request and is simply forwarded here; it is never
-// stored server-side, so this function needs no environment variables to
-// work in the free tier.
+// The app uses ONE shared FantasyPros API key, baked in server-side as the
+// FANTASYPROS_API_KEY environment variable, so individual users never need
+// to request or paste in their own key. A client-supplied key is still
+// honored as a fallback (useful for local dev without the env var set).
 //
 // IMPORTANT — FantasyPros' free tier is licensed for personal,
-// non-commercial, non-production use. If you deploy this app for other
-// people to use with their own accounts, each person should supply their
-// own key (client-side, in Settings) rather than sharing one — and if you
-// want this feature live in a shared/production deployment, FantasyPros
-// requires an active paid "Hall of Fame" subscription (their Premium API
-// tier) or a separate commercial agreement. See README.md for details.
+// non-commercial, non-production use. If this app is deployed for a wider
+// audience than a private league, FantasyPros requires an active paid
+// "Hall of Fame" subscription (their Premium API tier) or a separate
+// commercial agreement. See README.md for details.
 
 const BASE_URL = 'https://api.fantasypros.com/v2/json';
 
@@ -26,7 +22,8 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { apiKey, resource, sport = 'nfl', season, params = {} } = req.body || {};
+  const { apiKey: clientKey, resource, sport = 'nfl', season, params = {} } = req.body || {};
+  const apiKey = process.env.FANTASYPROS_API_KEY || clientKey;
   if (!apiKey) {
     res.status(400).json({ error: 'Missing FantasyPros API key.' });
     return;

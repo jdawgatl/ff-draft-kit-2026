@@ -68,8 +68,8 @@ interface RefreshResult {
  *      the earliest signal of breaking news, before rankings sites update.
  *   3. ESPN NFL news headlines — always, free, no key, best-effort (see
  *      lib/espnNews.ts for the "unofficial endpoint" caveat).
- *   4. FantasyPros consensus expert rankings + injury/news — only if the
- *      user has saved their own free FantasyPros API key in Settings.
+ *   4. FantasyPros consensus expert rankings + injury/news — always, via a
+ *      shared FantasyPros key baked into the app server-side.
  * Every step is independently wrapped so one failing source (e.g. ESPN's
  * endpoint changing) never blocks the others or breaks the app.
  */
@@ -153,30 +153,31 @@ export async function refreshLiveData(): Promise<RefreshResult> {
     errors.push(`ESPN: ${(err as Error).message}`);
   }
 
-  // 4. FantasyPros (optional, only if the user configured their own key)
-  const fpKey = getStoredFantasyProsKey();
-  if (fpKey) {
-    try {
-      const [ranks, news] = await Promise.all([
-        fetchExpertRankings(fpKey),
-        fetchExpertNews(fpKey),
-      ]);
-      for (const [normName, r] of ranks.byNormalizedName) {
-        const player = nameToPlayer.get(normName);
-        if (!player) continue;
-        addOverride(player.id, { expertRank: r.rank, expertTier: r.tier });
-        expertRankCount++;
-      }
-      for (const [normName, items] of news.byNormalizedName) {
-        const player = nameToPlayer.get(normName);
-        if (!player) continue;
-        addOverride(player.id, { news: items });
-        newsCount += items.length;
-      }
-      sources.push('FantasyPros');
-    } catch (err) {
-      errors.push(`FantasyPros: ${(err as Error).message}`);
+  // 4. FantasyPros expert consensus rankings + news — the app ships with a
+  // shared FantasyPros key baked in server-side, so this always runs; a
+  // locally-saved key (legacy, from before the key was baked in) is still
+  // honored as an override if present.
+  const fpKey = getStoredFantasyProsKey() || undefined;
+  try {
+    const [ranks, news] = await Promise.all([
+      fetchExpertRankings(fpKey),
+      fetchExpertNews(fpKey),
+    ]);
+    for (const [normName, r] of ranks.byNormalizedName) {
+      const player = nameToPlayer.get(normName);
+      if (!player) continue;
+      addOverride(player.id, { expertRank: r.rank, expertTier: r.tier });
+      expertRankCount++;
     }
+    for (const [normName, items] of news.byNormalizedName) {
+      const player = nameToPlayer.get(normName);
+      if (!player) continue;
+      addOverride(player.id, { news: items });
+      newsCount += items.length;
+    }
+    sources.push('FantasyPros');
+  } catch (err) {
+    errors.push(`FantasyPros: ${(err as Error).message}`);
   }
 
   const updatedCount = Object.keys(overrides).length;

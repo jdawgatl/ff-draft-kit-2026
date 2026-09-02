@@ -11,7 +11,6 @@ import {
   fetchMyYahooLeagues,
   type YahooLeagueSummary,
 } from '../lib/yahooAuth';
-import { getStoredFantasyProsKey, setStoredFantasyProsKey } from '../lib/fantasyProsApi';
 import { refreshLiveData } from '../lib/dataRefresh';
 
 interface Props {
@@ -36,18 +35,11 @@ export default function SettingsModal({ onClose }: Props) {
   const [loadingLeagues, setLoadingLeagues] = useState(false);
   const [selectedLeagueKey, setSelectedLeagueKey] = useState(yahooLeagueKey ?? '');
 
-  const [fpKey, setFpKey] = useState(() => getStoredFantasyProsKey());
-  const [fpStatus, setFpStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [fpStatus, setFpStatus] = useState<'idle' | 'testing' | 'saved' | 'error'>('idle');
   const [fpMsg, setFpMsg] = useState('');
 
-  async function handleSaveFantasyProsKey() {
-    setStoredFantasyProsKey(fpKey.trim());
-    if (!fpKey.trim()) {
-      setFpStatus('idle');
-      setFpMsg('');
-      return;
-    }
-    setFpStatus('saving');
+  async function handleTestFantasyPros() {
+    setFpStatus('testing');
     setFpMsg('');
     try {
       const result = await refreshLiveData();
@@ -56,7 +48,7 @@ export default function SettingsModal({ onClose }: Props) {
         setFpMsg(result.errors.find((e) => e.startsWith('FantasyPros')) ?? 'FantasyPros request failed.');
       } else {
         setFpStatus('saved');
-        setFpMsg(`Key saved — pulled expert ranks for ${result.expertRankCount} players.`);
+        setFpMsg(`Pulled expert ranks for ${result.expertRankCount} players.`);
       }
     } catch (err) {
       setFpStatus('error');
@@ -192,32 +184,18 @@ export default function SettingsModal({ onClose }: Props) {
               <Newspaper size={13} /> Live Rankings, Injuries & News
             </div>
             <p className="mb-2 text-[11px] text-slate-500">
-              The header's <b>Refresh Data</b> button always pulls Sleeper's injury/team data and
-              Sleeper's trending-adds signal, plus a best-effort ESPN news feed — all free, no key
-              needed. For real FantasyPros expert consensus rankings (ECR) and their injury/news
-              wire, add your own free FantasyPros API key below.
+              The header's <b>Refresh Data</b> button always pulls Sleeper's injury/team data,
+              Sleeper's trending-adds signal, a best-effort ESPN news feed, and FantasyPros expert
+              consensus rankings (ECR) and injury/news — all included automatically, no setup or
+              API key needed on your end.
             </p>
-            <p className="mb-2 text-[11px] text-slate-500">
-              Request a free key at{' '}
-              <a href="https://secure.fantasypros.com/api-keys/request/" target="_blank" rel="noreferrer" className="text-sky-400 underline">
-                secure.fantasypros.com/api-keys/request
-              </a>{' '}
-              (personal, non-commercial use — see README.md → "FantasyPros API Setup" for the
-              licensing caveat on hosted/shared deployments).
-            </p>
-            <input
-              value={fpKey}
-              onChange={(e) => setFpKey(e.target.value)}
-              placeholder="FantasyPros API Key"
-              className="mb-2 w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none"
-            />
             <button
-              onClick={handleSaveFantasyProsKey}
-              disabled={fpStatus === 'saving'}
+              onClick={handleTestFantasyPros}
+              disabled={fpStatus === 'testing'}
               className="flex w-full items-center justify-center gap-1.5 rounded-md bg-sky-600 px-3 py-2 text-xs font-bold text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {fpStatus === 'saving' && <Loader2 size={13} className="animate-spin" />}
-              Save Key & Pull Expert Rankings
+              {fpStatus === 'testing' && <Loader2 size={13} className="animate-spin" />}
+              Test FantasyPros Connection
             </button>
             {fpStatus === 'saved' && (
               <div className="mt-2 flex items-start gap-1.5 rounded-md border border-emerald-700/40 bg-emerald-500/10 p-2 text-[11px] text-emerald-300">

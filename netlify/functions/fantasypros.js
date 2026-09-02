@@ -7,7 +7,11 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  const { apiKey, resource, sport = 'nfl', season, params = {} } = JSON.parse(event.body || '{}');
+  const { apiKey: clientKey, resource, sport = 'nfl', season, params = {} } = JSON.parse(event.body || '{}');
+  // Prefer the shared server-side key (baked in via Netlify env var) so
+  // individual users don't need to obtain their own FantasyPros key. A
+  // client-supplied key is still honored as a fallback/override.
+  const apiKey = process.env.FANTASYPROS_API_KEY || clientKey;
   if (!apiKey) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Missing FantasyPros API key.' }) };
   }

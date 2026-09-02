@@ -44,14 +44,20 @@ function slug(name, team) {
   return `${name}-${team}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+// True 2026 NFL Draft class only — players in their FIRST pro season in
+// 2026. Previously this set accidentally mixed in the entire 2025 draft
+// class (Ashton Jeanty, Jaxson Dart, Travis Hunter, etc.), who are now
+// second-year players and should NOT show a "Rookie" badge for the 2026
+// season. Verified against current rosters/news as of Sept 2026.
 const KNOWN_ROOKIES = new Set([
-  'Ashton Jeanty', 'Jeremiyah Love', 'Omarion Hampton', 'Cam Skattebo',
-  'Tetairoa McMillan', 'Emeka Egbuka', 'Colston Loveland', 'Tyler Warren',
-  'Matthew Golden', 'Luther Burden', 'RJ Harvey', 'Jaxson Dart',
-  'Quinshon Judkins', 'Bhayshul Tuten', 'Kyle Monangai', 'TreVeyon Henderson',
-  'Jack Bech', 'Travis Hunter', "Tre' Harris", 'Isaac TeSlaa', 'Dylan Sampson',
-  'Woody Marks', 'Jordyn Tyson', 'Jayden Higgins', 'Harold Fannin',
-  'Kaelon Black', 'Jonah Coleman', 'Nicholas Singleton', 'Cyrus Allen',
+  'Jeremiyah Love', 'Jadarian Price', 'Jonah Coleman', 'Emmett Johnson',
+  'Nicholas Singleton', 'Kaelon Black', 'Jordan James',
+  'Carnell Tate', 'Jordyn Tyson', 'Makai Lemon', 'KC Concepcion',
+  'Denzel Boston', "De'Zhaun Stribling", 'Mike Washington', 'Omar Cooper',
+  'Germie Bernard', 'Caleb Douglas', 'Chris Bell', 'Malachi Fields',
+  "Ja'Kobi Lane", 'Cyrus Allen',
+  'Kenyon Sadiq',
+  'Fernando Mendoza',
 ]);
 
 // Positions this standard (non-IDP) league can roster.

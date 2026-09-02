@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   X, Star, Flame, Newspaper, AlertTriangle, TrendingUp, Shield,
-  Loader2, User,
+  Loader2, User, Moon, Link2,
 } from 'lucide-react';
 import { useDraftStore, selectCurrentPick, selectMockCurrentPick } from '../store/draftStore';
 import type { Player } from '../types';
 import { POSITION_COLORS, TIER_COLORS, formatPick, pct } from '../lib/format';
 import { survivalProbability } from '../lib/normal';
 import { getPlayerHeadshotUrl, getTeamLogoUrl } from '../lib/espnHeadshots';
+import { isSleeper, buildHandcuffLeadNameMap } from '../lib/playerTags';
 
 /** Turns a player's raw stat-line projection into a short, position-aware
  * list of human-readable stat bullets for the drawer's breakdown section. */
@@ -63,6 +64,7 @@ export default function PlayerDetailDrawer() {
   const isMock = viewingContext === 'mock';
   const setViewingPlayer = useDraftStore((s) => s.setViewingPlayer);
   const allPlayers = useDraftStore((s) => s.allPlayers);
+  const handcuffLeadNameById = useMemo(() => buildHandcuffLeadNameMap(allPlayers), [allPlayers]);
   const draftedIds = useDraftStore((s) => (isMock ? s.mockDraftedPlayerIds : s.liveDraftedPlayerIds));
   const watchlist = useDraftStore((s) => s.watchlist);
   const toggleWatch = useDraftStore((s) => s.toggleWatch);
@@ -187,6 +189,22 @@ export default function PlayerDetailDrawer() {
                 {player.trending === 'up' && (
                   <span className="inline-flex items-center gap-0.5 rounded bg-orange-500/15 px-1.5 py-0.5 text-[9px] font-bold text-orange-300">
                     <Flame size={9} /> Trending
+                  </span>
+                )}
+                {isSleeper(player) && (
+                  <span
+                    title="Sleeper — our internal rank is well ahead of where he's actually being drafted (ADP), a likely value pick"
+                    className="inline-flex items-center gap-0.5 rounded bg-violet-500/20 px-1.5 py-0.5 text-[9px] font-bold text-violet-300"
+                  >
+                    <Moon size={9} /> Sleeper
+                  </span>
+                )}
+                {handcuffLeadNameById.get(player.id) && (
+                  <span
+                    title={`Handcuff for ${handcuffLeadNameById.get(player.id)} — the primary backup if he gets hurt`}
+                    className="inline-flex items-center gap-0.5 rounded bg-fuchsia-500/20 px-1.5 py-0.5 text-[9px] font-bold text-fuchsia-300"
+                  >
+                    <Link2 size={9} /> Cuff for {handcuffLeadNameById.get(player.id)}
                   </span>
                 )}
               </div>

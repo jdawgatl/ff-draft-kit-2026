@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Star, Search, AlertTriangle, TrendingDown, TrendingUp, Flame, Newspaper, ArrowUp, ArrowDown } from 'lucide-react';
+import { Star, Search, AlertTriangle, TrendingDown, TrendingUp, ArrowUp, ArrowDown } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import {
   useDraftStore,
@@ -10,6 +10,8 @@ import {
 } from '../store/draftStore';
 import type { Player, Position } from '../types';
 import { POSITION_COLORS, TIER_COLORS, formatPick } from '../lib/format';
+import { buildHandcuffLeadNameMap } from '../lib/playerTags';
+import PlayerTags from './PlayerTags';
 
 type PosFilter = 'ALL' | Position | 'STARRED';
 type SortKey = 'rank' | 'ecr' | 'points' | 'vorp' | 'adp';
@@ -43,6 +45,7 @@ interface Props {
 export default function PlayerBoard({ mode = 'live' }: Props) {
   const isMock = mode === 'mock';
   const allPlayers = useDraftStore((s) => s.allPlayers);
+  const handcuffLeadNameById = useMemo(() => buildHandcuffLeadNameMap(allPlayers), [allPlayers]);
   const draftedIds = useDraftStore((s) => (isMock ? s.mockDraftedPlayerIds : s.liveDraftedPlayerIds));
   const watchlist = useDraftStore((s) => s.watchlist);
   const teams = useDraftStore((s) => s.settings.teams);
@@ -185,6 +188,7 @@ export default function PlayerBoard({ mode = 'live' }: Props) {
                 onView={() => setViewingPlayer(p.id, mode)}
                 currentPickNumber={currentPick?.pickNumber ?? 1}
                 teams={teams}
+                handcuffLeadName={handcuffLeadNameById.get(p.id)}
               />
             ))}
             {rows.length === 0 && (
@@ -244,6 +248,7 @@ function PlayerRow({
   onView,
   currentPickNumber,
   teams,
+  handcuffLeadName,
 }: {
   player: Player;
   isDrafted: boolean;
@@ -253,6 +258,7 @@ function PlayerRow({
   onView: () => void;
   currentPickNumber: number;
   teams: number;
+  handcuffLeadName?: string;
 }) {
   const reachDiff = player.adp - currentPickNumber;
   const isValue = -reachDiff >= 8;
@@ -293,24 +299,7 @@ function PlayerRow({
         <button onClick={onView} className="text-left hover:text-emerald-300 hover:underline">
           {player.name}
         </button>
-        {player.injuryStatus && (
-          <span className="ml-1.5 rounded bg-red-500/20 px-1 text-[9px] font-bold text-red-300">
-            {player.injuryStatus}
-          </span>
-        )}
-        {player.rookie && (
-          <span className="ml-1.5 rounded bg-cyan-500/20 px-1 text-[9px] font-bold text-cyan-300">R</span>
-        )}
-        {player.trending === 'up' && (
-          <span title={`Trending up on Sleeper waivers (${player.trendingCount ?? ''} adds, 24h)`}>
-            <Flame size={11} className="ml-1 inline text-orange-400" />
-          </span>
-        )}
-        {player.news?.[0] && (
-          <span title={player.news.map((n) => `[${n.source}] ${n.headline}`).join('\n')}>
-            <Newspaper size={11} className="ml-1 inline text-sky-400" />
-          </span>
-        )}
+        <PlayerTags player={player} handcuffLeadName={handcuffLeadName} />
       </td>
       <td className="px-2 py-1.5">
         <span className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${POSITION_COLORS[player.position]}`}>

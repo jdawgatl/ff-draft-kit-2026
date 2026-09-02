@@ -306,7 +306,6 @@
     "position": "RB",
     "bye": 7,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 209,
       "rushYds": 881,
@@ -371,7 +370,6 @@
     "position": "RB",
     "bye": 13,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 193,
       "rushYds": 797,
@@ -751,7 +749,6 @@
     "position": "WR",
     "bye": 5,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 101,
       "rec": 65,
@@ -818,7 +815,6 @@
     "position": "WR",
     "bye": 10,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 90,
       "rec": 58,
@@ -841,7 +837,6 @@
     "position": "RB",
     "bye": 8,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 133,
       "rushYds": 551,
@@ -863,7 +858,6 @@
     "position": "TE",
     "bye": 10,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 97,
       "rec": 66,
@@ -1011,7 +1005,6 @@
     "position": "RB",
     "bye": 11,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 115,
       "rushYds": 494,
@@ -1055,7 +1048,6 @@
     "position": "WR",
     "bye": 10,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 67,
       "rec": 43,
@@ -1121,7 +1113,6 @@
     "position": "TE",
     "bye": 13,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 94,
       "rec": 64,
@@ -1270,7 +1261,6 @@
     "position": "RB",
     "bye": 7,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 95,
       "rushYds": 405,
@@ -1314,7 +1304,6 @@
     "position": "RB",
     "bye": 11,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 81,
       "rushYds": 344,
@@ -1358,6 +1347,7 @@
     "position": "RB",
     "bye": 11,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "rushAtt": 75,
       "rushYds": 299,
@@ -1445,6 +1435,7 @@
     "position": "WR",
     "bye": 9,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 40,
       "rec": 25,
@@ -1467,6 +1458,7 @@
     "position": "WR",
     "bye": 8,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 38,
       "rec": 24,
@@ -1616,7 +1608,6 @@
     "position": "TE",
     "bye": 11,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 95,
       "rec": 65,
@@ -1699,7 +1690,6 @@
     "position": "RB",
     "bye": 10,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 48,
       "rushYds": 202,
@@ -2083,6 +2073,7 @@
     "position": "WR",
     "bye": 10,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 17,
       "rec": 10,
@@ -2208,7 +2199,6 @@
     "position": "RB",
     "bye": 10,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 31,
       "rushYds": 129,
@@ -2276,7 +2266,6 @@
     "position": "QB",
     "bye": 8,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "passAtt": 532,
       "passCmp": 345,
@@ -2504,6 +2493,7 @@
     "position": "WR",
     "bye": 11,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 18,
       "rec": 11,
@@ -2644,7 +2634,6 @@
     "position": "WR",
     "bye": 11,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 18,
       "rec": 11,
@@ -2941,6 +2930,7 @@
     "position": "RB",
     "bye": 13,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "rushAtt": 31,
       "rushYds": 123,
@@ -3021,7 +3011,6 @@
     "position": "RB",
     "bye": 8,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 30,
       "rushYds": 124,
@@ -3411,6 +3400,7 @@
     "position": "WR",
     "bye": 11,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 19,
       "rec": 11,
@@ -3528,7 +3518,6 @@
     "position": "RB",
     "bye": 11,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "rushAtt": 30,
       "rushYds": 116,
@@ -3683,6 +3672,7 @@
     "position": "WR",
     "bye": 13,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 17,
       "rec": 10,
@@ -3893,6 +3883,7 @@
     "position": "TE",
     "bye": 13,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 43,
       "rec": 28,
@@ -4346,7 +4337,6 @@
     "position": "WR",
     "bye": 6,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 17,
       "rec": 10,
@@ -4411,7 +4401,6 @@
     "position": "WR",
     "bye": 7,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 18,
       "rec": 10,
@@ -4665,6 +4654,7 @@
     "position": "RB",
     "bye": 5,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "rushAtt": 30,
       "rushYds": 114,
@@ -4709,6 +4699,7 @@
     "position": "WR",
     "bye": 13,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 17,
       "rec": 10,
@@ -4987,6 +4978,7 @@
     "position": "WR",
     "bye": 6,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 17,
       "rec": 10,
@@ -5009,7 +5001,6 @@
     "position": "WR",
     "bye": 7,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 18,
       "rec": 10,
@@ -5032,6 +5023,7 @@
     "position": "RB",
     "bye": 8,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "rushAtt": 29,
       "rushYds": 111,
@@ -5149,6 +5141,7 @@
     "position": "WR",
     "bye": 8,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 19,
       "rec": 11,
@@ -5464,6 +5457,7 @@
     "position": "QB",
     "bye": 13,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "passAtt": 417,
       "passCmp": 252,
@@ -5487,6 +5481,7 @@
     "position": "WR",
     "bye": 9,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 17,
       "rec": 10,
@@ -5588,6 +5583,7 @@
     "position": "WR",
     "bye": 6,
     "injuryStatus": null,
+    "rookie": true,
     "stats": {
       "targets": 18,
       "rec": 10,
@@ -5627,7 +5623,6 @@
     "position": "WR",
     "bye": 13,
     "injuryStatus": null,
-    "rookie": true,
     "stats": {
       "targets": 19,
       "rec": 11,
